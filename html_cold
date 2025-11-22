@@ -1,0 +1,318 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TypeWrite Prototype</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f7f7f8; --card:#ffffff; --muted:#6b7280; --accent:#2563eb;
+      --radius:12px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{
+      margin:0; padding:28px; background:linear-gradient(180deg,#fbfdff,#f7f7f8); color:#111827;
+      -webkit-font-smoothing:antialiased;
+    }
+    .app {
+      max-width:1100px; margin:0 auto; display:grid; grid-template-columns: 1fr 380px; gap:20px;
+    }
+    .panel {
+      background:var(--card); border-radius:var(--radius); padding:20px; box-shadow:0 6px 18px rgba(15,23,42,0.06);
+    }
+    header h1{ margin:0; font-size:20px;}
+    .compose-area{ display:flex; flex-direction:column; gap:12px; }
+    .compose-top{ display:flex; gap:12px; align-items:center; }
+    select, button, .intent { padding:8px 10px; border-radius:8px; border:1px solid #e6e7eb; background:white; font-size:14px; }
+    textarea{ width:100%; min-height:180px; padding:14px; border-radius:12px; border:1px solid #e6e7eb; resize:vertical; font-size:15px; line-height:1.5;}
+    .send-row{ display:flex; gap:8px; align-items:center; justify-content:space-between; }
+    .send-btn{ background:var(--accent); color:white; border:none; padding:10px 14px; border-radius:10px; cursor:pointer; box-shadow:0 6px 12px rgba(37,99,235,0.18); }
+    .sidebar { display:flex; flex-direction:column; gap:12px; position:sticky; top:28px; }
+    .card { background:linear-gradient(180deg, #fff, #fbfdff); padding:12px; border-radius:12px; border:1px solid #eef2ff;}
+    .card h3{ margin:0 0 8px 0; font-size:14px; }
+    .card p{ margin:0; color:var(--muted); font-size:13px; }
+    .pill { display:inline-block; padding:6px 8px; border-radius:999px; background:#f1f5f9; margin-right:6px; font-size:13px; color:#111827; cursor:pointer; border:1px solid #e6eefc;}
+    .tailor { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+    .preview-modal{ position:fixed; right:420px; top:80px; width:360px; background:var(--card); border-radius:12px; padding:12px; box-shadow:0 24px 48px rgba(15,23,42,0.12); display:none; z-index:80; }
+    .preview-modal .row{ margin-bottom:10px; }
+    .muted{ color:var(--muted); font-size:13px; }
+    .incoming { margin-top:18px; background:#fff; padding:12px; border-radius:10px; border:1px solid #eef2ff;}
+    .incoming pre{ margin:0; white-space:pre-wrap; font-family:inherit; }
+    .actions { display:flex; gap:8px; margin-top:12px; }
+    .small-btn{ padding:6px 8px; border-radius:8px; border:1px solid #e6e7eb; background:white; cursor:pointer; font-size:13px; }
+    .note { font-size:13px; color:var(--muted); margin-top:8px; }
+    .mock-image { width:100%; border-radius:10px; margin-top:12px; }
+    footer { margin-top:16px; color:var(--muted); font-size:13px; }
+    .kbd { background:#f3f4f6; padding:6px 8px; border-radius:6px; border:1px solid #eaeef5; font-weight:600; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div>
+      <div class="panel">
+        <header>
+          <h1>TypeWrite — Compose</h1>
+          <div class="note">A lightweight prototype demonstrating core interactions: Intent selector, Live suggestions, Perspective previews and One-click tailoring.</div>
+        </header>
+
+        <div class="compose-area" style="margin-top:16px;">
+          <div class="compose-top">
+            <label class="intent">Intent:
+              <select id="intentSelect">
+                <option value="inform">Inform</option>
+                <option value="ask">Ask</option>
+                <option value="action">Request Action</option>
+                <option value="clarify">Clarify</option>
+                <option value="feedback">Feedback</option>
+              </select>
+            </label>
+            <div style="flex:1"></div>
+            <button class="small-btn" id="previewBtn">Perspective Preview</button>
+            <button class="small-btn" id="analyzeBtn">Analyze</button>
+          </div>
+
+          <textarea id="compose" placeholder="Write your message here...">Hey team — can you send that when you get a second? We need the latest metrics for the deck. Thanks!</textarea>
+
+          <div class="send-row">
+            <div class="tailor">
+              <button class="pill" data-action="simplify">Simplify</button>
+              <button class="pill" data-action="direct">Make Direct</button>
+              <button class="pill" data-action="soften">Soften Tone</button>
+              <button class="pill" data-action="context">Add Context</button>
+              <button class="pill" data-action="bullets">To Bullets</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div class="muted">Suggestions: <span id="suggCount">0</span></div>
+              <button class="send-btn" id="sendBtn">Send</button>
+            </div>
+          </div>
+
+          <div class="note">Tip: click <span class="kbd">Perspective Preview</span> to see three quick interpretations. Click a Tailor pill for a one-click rewrite.</div>
+        </div>
+
+        <footer>
+          <div class="note">Prototype uses simple heuristics (sentence length, modal verbs, vague phrases) to generate suggestions. Not an ML model — for demo only.</div>
+        </footer>
+      </div>
+
+      <div class="panel incoming" style="margin-top:14px;">
+        <h3 style="margin-top:0">Receive Mode — Incoming message</h3>
+        <pre id="incomingText">Hi, please send the file. Also, I need your notes. ASAP. Thanks.</pre>
+        <div class="actions">
+          <button class="small-btn" id="reformatIncoming">Reformat for me</button>
+          <button class="small-btn" id="summarizeIncoming">Extract summary</button>
+          <button class="small-btn" id="toneIncoming">Interpret tone</button>
+        </div>
+        <div id="incomingOutput" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="card">
+        <h3>Clarity</h3>
+        <p id="clarityText">—</p>
+      </div>
+      <div class="card">
+        <h3>Tone & Urgency</h3>
+        <p id="toneText">—</p>
+      </div>
+      <div class="card">
+        <h3>Context</h3>
+        <p id="contextText">—</p>
+      </div>
+
+      <div class="card">
+        <h3>One-click Tailor</h3>
+        <p class="muted">Quick rewrites based on common needs.</p>
+        <div class="tailor" style="margin-top:8px;">
+          <button class="pill" data-action="simplify2">Simplify</button>
+          <button class="pill" data-action="direct2">Direct</button>
+          <button class="pill" data-action="soften2">Softer</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Perspective Preview</h3>
+        <p class="muted">Literal thinker / Fast skimmer / Anxious reader</p>
+        <button class="small-btn" id="openPreview">Open Preview</button>
+        <img class="mock-image" src="/mnt/data/A_pitch_deck_image_for_a_communication_tool_design.png" alt="deck mockup" />
+      </div>
+    </aside>
+  </div>
+
+  <div class="preview-modal" id="previewModal" role="dialog" aria-modal="true">
+    <div class="row"><strong>Perspective Preview</strong></div>
+    <div class="row"><em class="muted">Literal thinker:</em>
+      <div id="literal" style="margin-top:6px;"></div>
+    </div>
+    <div class="row"><em class="muted">Fast skimmer:</em>
+      <div id="skimmer" style="margin-top:6px;"></div>
+    </div>
+    <div class="row"><em class="muted">Anxious reader:</em>
+      <div id="anxious" style="margin-top:6px;"></div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button class="small-btn" id="closePreview">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Simple heuristics-based analyses and rewrites
+    const vaguePhrases = ["when you get a second","ASAP","a sec","in a bit","whenever you can","asap"];
+    const modalVerbs = ["could", "would", "might", "should", "can you", "please"];
+    const compose = document.getElementById('compose');
+    const clarityText = document.getElementById('clarityText');
+    const toneText = document.getElementById('toneText');
+    const contextText = document.getElementById('contextText');
+    const suggCount = document.getElementById('suggCount');
+    const previewModal = document.getElementById('previewModal');
+
+    function analyzeText(text) {
+      let suggestions = [];
+      // check vagueness
+      for(const vp of vaguePhrases) if(text.toLowerCase().includes(vp)) suggestions.push('Vague timing phrase: "'+vp+'"');
+      // check long sentences
+      const sentences = text.split(/[.?!]\\n?|\\n/).map(s=>s.trim()).filter(Boolean);
+      if(sentences.some(s=>s.split(' ').length>25)) suggestions.push('Long sentence detected');
+      // check for missing context (simple heur)
+      if(text.toLowerCase().includes('the file') || text.toLowerCase().includes('it')) {
+        suggestions.push('Referent unclear — specify which file/it');
+      }
+      // tone urgency
+      let urgency = 'Neutral';
+      if(/\\bASAP|urgent|asap|now\\b/i.test(text)) urgency='High';
+      if(/\\bthanks\\b/i.test(text) && text.length<60) suggestions.push('Short message with thanks — could be terse');
+      return {suggestions, urgency, sentencesCount: sentences.length};
+    }
+
+    function renderAnalysis() {
+      const t = compose.value;
+      const res = analyzeText(t);
+      clarityText.textContent = res.suggestions.length ? res.suggestions.join(' • ') : 'Looks clear';
+      toneText.textContent = 'Urgency: ' + res.urgency;
+      contextText.textContent = t.toLowerCase().match(/the file|it|that/) ? 'Possible unclear referents. Add specifics.' : 'Context seems sufficient';
+      suggCount.textContent = res.suggestions.length;
+    }
+
+    compose.addEventListener('input', renderAnalysis);
+    document.getElementById('analyzeBtn').addEventListener('click', renderAnalysis);
+
+    // Tailoring functions (basic transformations)
+    function simplifyText(t) {
+      // naive: split into sentences and keep shorter halves
+      return t.split(/([.?!]\\s+)/).map((chunk,i,arr)=>{
+        if(i%2===0){
+          const words = chunk.split(' ');
+          if(words.length>20) return words.slice(0,20).join(' ')+'...';
+        }
+        return chunk;
+      }).join('');
+    }
+    function makeDirect(t) {
+      // remove qualifiers like "maybe", "I think", "could you"
+      return t.replace(/\\bmaybe\\b|\\bi think\\b|\\bcould you\\b|\\bwhen you get a second\\b/gi,'').replace(/\\s{2,}/g,' ').trim();
+    }
+    function softenTone(t) {
+      if(!/please/i.test(t)) return t + " Please and thanks!";
+      return t;
+    }
+    function addContext(t) {
+      if(/the file/i.test(t)) return t.replace(/the file/i,'the Q3_metrics_v2.xlsx file');
+      return t + " (attach file name or link if relevant)";
+    }
+    function toBullets(t) {
+      // split into sentences and join as bullets
+      const s = t.split(/[.?!]\\s*/).map(s=>s.trim()).filter(Boolean);
+      return s.map(s=>'- '+s).join('\\n');
+    }
+
+    // apply tailor via pill buttons
+    document.querySelectorAll('.pill').forEach(btn=>{
+      btn.addEventListener('click', ()=> {
+        const action = btn.dataset.action || btn.getAttribute('data-action');
+        let t = compose.value;
+        if(action.includes('simplify')) t = simplifyText(t);
+        if(action.includes('direct')) t = makeDirect(t);
+        if(action.includes('soften')) t = softenTone(t);
+        if(action.includes('context')) t = addContext(t);
+        if(action.includes('bullets')) t = toBullets(t);
+        compose.value = t;
+        renderAnalysis();
+      })
+    });
+
+    // Perspective preview
+    function makeLiteral(t) {
+      return '"Literal interpretation: You must send this file now."';
+    }
+    function makeSkimmer(t) {
+      const firstLine = t.split(/\\n/)[0];
+      return '"Skimmer may miss the actual request — try a TL;DR at top."';
+    }
+    function makeAnxious(t) {
+      return '"Anxious interpretation: Is this urgent? Am I in trouble?"';
+    }
+
+    document.getElementById('openPreview').addEventListener('click', ()=> {
+      previewModal.style.display='block';
+      document.getElementById('literal').textContent = makeLiteral(compose.value);
+      document.getElementById('skimmer').textContent = makeSkimmer(compose.value);
+      document.getElementById('anxious').textContent = makeAnxious(compose.value);
+    });
+    document.getElementById('previewBtn').addEventListener('click', ()=> document.getElementById('openPreview').click());
+    document.getElementById('closePreview').addEventListener('click', ()=> previewModal.style.display='none');
+
+    // Receive mode actions
+    document.getElementById('reformatIncoming').addEventListener('click', ()=> {
+      const text = document.getElementById('incomingText').textContent;
+      // naive: split sentences and label actions
+      const s = text.split(/\\.\\s*/).map(x=>x.trim()).filter(Boolean);
+      const out = s.map((seg,i)=>'<div><strong>Point '+(i+1)+':</strong> '+seg+'</div>').join('');
+      document.getElementById('incomingOutput').innerHTML = out;
+    });
+    document.getElementById('summarizeIncoming').addEventListener('click', ()=> {
+      const text = document.getElementById('incomingText').textContent;
+      const s = text.split(/\\.\\s*/).map(x=>x.trim()).filter(Boolean);
+      document.getElementById('incomingOutput').innerHTML = '<div><strong>Summary:</strong> '+s.slice(0,2).join(' — ')+'</div>';
+    });
+    document.getElementById('toneIncoming').addEventListener('click', ()=> {
+      const text = document.getElementById('incomingText').textContent;
+      let tone='Neutral';
+      if(/ASAP|ASAP|urgent|now/i.test(text)) tone='Urgent';
+      document.getElementById('incomingOutput').innerHTML = '<div><strong>Tone:</strong> '+tone+' (likely stressed, not angry)</div>';
+    });
+
+    // initial render
+    renderAnalysis();
+
+    // simple send action
+    document.getElementById('sendBtn').addEventListener('click', ()=> {
+      alert('Message sent (prototype).\\nFinal message:\\n\\n'+compose.value);
+    });
+
+  </script>
+
+<script>
+// Toggle perspective modal
+document.addEventListener('click', function(e){
+  if(e.target.id === 'openPerspective'){
+    document.getElementById('perspectiveModal').style.display = 'block';
+  }
+  if(e.target.classList.contains('closeModal')){
+    document.getElementById('perspectiveModal').style.display = 'none';
+  }
+});
+
+// Simple tailoring functions
+function simplify(){
+  let t = document.getElementById('composer').value;
+  document.getElementById('composer').value = t.replace(/\b(utilize|leverage|approximately)\b/g, 'use');
+}
+function makeDirect(){
+  let t = document.getElementById('composer').value;
+  document.getElementById('composer').value = "I'm saying this directly: " + t;
+}
+</script>
+</body>
+</html>
