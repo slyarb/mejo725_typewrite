@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TypeWrite — Tone·Intent Lens Prototype</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f4f6fb; --card:#ffffff; --muted:#6b7280; --accent:#0f62fe;
+      --radius:10px; --glass: rgba(255,255,255,0.7);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{ margin:0; padding:28px; background:linear-gradient(180deg,#fbfdff,#f4f6fb); color:#0f1724; -webkit-font-smoothing:antialiased; }
+    .container { max-width:1100px; margin:0 auto; display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start; }
+    .panel { background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:0 10px 30px rgba(15,23,42,0.06); }
+    h1{ margin:0; font-size:18px; }
+    .muted{ color:var(--muted); font-size:13px; }
+    .compose { margin-top:14px; display:flex; flex-direction:column; gap:12px; }
+    textarea{ width:100%; min-height:220px; padding:14px; border-radius:12px; border:1px solid #e6e9ef; resize:vertical; font-size:15px; line-height:1.5; background:linear-gradient(180deg,#fff,#fbfdff);}
+    .toolbar { display:flex; gap:8px; align-items:center; }
+    select, button { padding:8px 10px; border-radius:8px; border:1px solid #e6e7eb; background:white; font-size:14px; }
+    .badge { display:inline-flex; gap:8px; align-items:center; padding:8px 10px; border-radius:999px; background:#f8fafc; border:1px solid #eef2ff; font-weight:600; }
+    .overlay { position:relative; }
+    .lens-indicator { position:absolute; right:8px; top:8px; background:linear-gradient(180deg,#fff,#f8fbff); border-radius:10px; padding:8px; border:1px solid #e6efff; box-shadow:0 6px 18px rgba(15,23,42,0.06); width:220px; }
+    .flag { display:flex; gap:8px; align-items:center; padding:8px; border-radius:8px; background:#fff; border:1px solid #eef2ff; margin-bottom:8px; }
+    .flag .icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; color:white; }
+    .flag .title { font-weight:700; font-size:13px; }
+    .flag .desc { font-size:13px; color:var(--muted); }
+    .actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+    .action-btn { padding:8px 10px; border-radius:8px; border:1px solid #e6e7eb; background:white; cursor:pointer; font-size:13px; }
+    .recipient { display:flex; gap:8px; align-items:center; }
+    .profile { padding:8px 10px; border-radius:8px; border:1px solid #e6e7eb; background:white; cursor:pointer; }
+    .profile.active { background:linear-gradient(90deg,#f0f6ff,#e6f0ff); border-color:#cfe0ff; box-shadow:0 6px 12px rgba(15,23,42,0.03); }
+    .visual { width:100%; height:140px; border-radius:10px; background:linear-gradient(180deg,#fff,#fbfdff); border:1px solid #eef6ff; display:flex; align-items:center; justify-content:center; color:var(--muted); }
+    .suggestion { background:#0f62fe; color:white; padding:8px 10px; border-radius:8px; cursor:pointer; border:none; }
+    .hint { font-size:13px; color:var(--muted); margin-top:8px; }
+    .log { margin-top:12px; font-size:13px; color:var(--muted); background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #eef6ff; min-height:90px; }
+    .pill { display:inline-block; padding:6px 8px; border-radius:999px; background:#f1f5f9; margin-right:6px; font-size:13px; color:#0f1724; cursor:pointer; border:1px solid #e6eefc;}
+    .intent { font-weight:700; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <main class="panel">
+      <h1>TypeWrite — Tone·Intent Lens</h1>
+      <div class="muted">Live, gentle feedback that suggests clarity without policing. Select an intent, choose a recipient style, and watch the Lens highlight spots as you type.</div>
+
+      <div class="compose">
+        <div class="toolbar">
+          <label class="intent">Intent:
+            <select id="intent">
+              <option value="inform">Inform</option>
+              <option value="ask">Ask</option>
+              <option value="action">Request Action</option>
+              <option value="clarify">Clarify</option>
+              <option value="feedback">Feedback</option>
+            </select>
+          </label>
+
+          <div style="flex:1"></div>
+
+          <div class="recipient">
+            <div class="muted" style="font-size:13px;">Recipient style:</div>
+            <div class="profile pill active" data-profile="direct">Direct</div>
+            <div class="profile pill" data-profile="detail">Detail-Oriented</div>
+            <div class="profile pill" data-profile="bigpicture">Big-Picture</div>
+            <div class="profile pill" data-profile="anxious">Anxious</div>
+          </div>
+        </div>
+
+        <div class="overlay">
+          <textarea id="composer">Hi Alex — can you send over the latest metrics for the deck when you have a sec? We'd like to review before the Friday sync. Thanks!</textarea>
+
+          <div class="lens-indicator" id="lens">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="font-weight:800;">Tone·Intent Lens</div>
+              <div class="muted" style="font-size:12px;" id="lensStatus">Analyzing…</div>
+            </div>
+
+            <div id="flags">
+              <!-- flags injected here -->
+            </div>
+
+            <div class="hint">Suggestions are friendly — click one to apply a quick rewrite or see alternatives.</div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="suggestion" id="applyTop">Apply top suggestion</button>
+          <button class="action-btn" id="viewAlternatives">View alternatives</button>
+          <div style="flex:1"></div>
+          <div class="muted">Matches: <span id="matchCount">0</span></div>
+        </div>
+
+        <div class="log" id="log">
+          Activity log — interactions will appear here.
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel">
+      <h3 style="margin-top:0">How it works</h3>
+      <div class="muted">The Lens monitors text as you type and uses a set of lightweight heuristics to flag places where intent could be unclear or tone misunderstood. It then offers friendly micro-actions.</div>
+
+      <div style="height:12px;"></div>
+
+      <div class="visual">
+        <!-- Replace the image path below with a URL if needed -->
+        <img src="/mnt/data/A_pitch_deck_image_for_a_communication_tool_design.png" alt="mock" style="max-width:100%; max-height:100%; border-radius:8px;" />
+      </div>
+
+      <div style="height:12px;"></div>
+
+      <div>
+        <h4 style="margin-bottom:6px;">Common Flags</h4>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="flag"><div class="icon" style="background:#ef4444">!</div><div><div class="title">Intent unclear</div><div class="desc">Message doesn't clearly state the desired action or timeline.</div></div></div>
+          <div class="flag"><div class="icon" style="background:#f59e0b">⚠</div><div><div class="title">Potentially blunt</div><div class="desc">Wording that may read as abrupt to some recipients.</div></div></div>
+          <div class="flag"><div class="icon" style="background:#10b981">✓</div><div><div class="title">Vague timing</div><div class="desc">Phrases like "when you have a sec" or "ASAP" are ambiguous.</div></div></div>
+        </div>
+      </div>
+
+      <div style="height:12px;"></div>
+
+      <div>
+        <h4 style="margin-bottom:6px;">Quick actions</h4>
+        <div class="actions">
+          <button class="action-btn" data-action="clarify">Clarify intent?</button>
+          <button class="action-btn" data-action="addcontext">Add context?</button>
+          <button class="action-btn" data-action="soften">Soften phrasing?</button>
+          <button class="action-btn" data-action="tighten">Tighten structure?</button>
+          <button class="action-btn" data-action="direct">Make more direct?</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Alternatives modal -->
+  <div id="altModal" style="display:none; position:fixed; left:50%; top:16%; transform:translateX(-50%); width:720px; max-width:95%; background:var(--card); border-radius:12px; box-shadow:0 30px 60px rgba(15,23,42,0.12); padding:16px; z-index:200;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-weight:800">Alternative rewrites</div>
+      <button class="action-btn" id="closeAlt">Close</button>
+    </div>
+    <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div style="background:#f9fafb; padding:12px; border-radius:8px;"><strong>Soften</strong><div class="muted" style="margin-top:8px;" id="altSoften"></div></div>
+      <div style="background:#f9fafb; padding:12px; border-radius:8px;"><strong>Direct</strong><div class="muted" style="margin-top:8px;" id="altDirect"></div></div>
+      <div style="background:#f9fafb; padding:12px; border-radius:8px;"><strong>Clarify</strong><div class="muted" style="margin-top:8px;" id="altClarify"></div></div>
+      <div style="background:#f9fafb; padding:12px; border-radius:8px;"><strong>Tighten</strong><div class="muted" style="margin-top:8px;" id="altTighten"></div></div>
+    </div>
+  </div>
+
+  <script>
+    // Lightweight heuristics for Tone·Intent Lens
+    const vagueTiming = ["when you have a sec","when you have a moment","when you can","ASAP","asap","in a bit","sometime today","soon"];
+    const softenWords = ["just","sorry","a bit","maybe","I think"];
+    const bluntWords = ["now","immediately","ASAP","urgent","don't"];
+    const composer = document.getElementById('composer');
+    const flagsContainer = document.getElementById('flags');
+    const lensStatus = document.getElementById('lensStatus');
+    const matchCount = document.getElementById('matchCount');
+    const log = document.getElementById('log');
+
+    const profiles = document.querySelectorAll('.profile');
+    let activeProfile = 'direct';
+    profiles.forEach(p=>{
+      p.addEventListener('click', ()=> {
+        profiles.forEach(pp=>pp.classList.remove('active'));
+        p.classList.add('active');
+        activeProfile = p.getAttribute('data-profile');
+        analyzeAndRender();
+        appendLog('Recipient set to: ' + activeProfile);
+      })
+    });
+
+    document.getElementById('intent').addEventListener('change', ()=> { analyzeAndRender(); appendLog('Intent set to: ' + document.getElementById('intent').value); });
+
+    function analyzeText(text) {
+      const lower = text.toLowerCase();
+      const suggestions = [];
+      // check vague timing
+      for (const v of vagueTiming) if (lower.includes(v)) suggestions.push({type:'vague_timing', title:'Vague timing', detail:`Phrase "${v}" is ambiguous.`, severity:2});
+      // intent unclear (simple heuristic: no imperative or question when action expected)
+      const intent = document.getElementById('intent').value;
+      if (intent === 'action') {
+        // look for action verbs or deadlines
+        if (!/\b(send|submit|complete|review|approve|share|deliver)\b/i.test(text) && !/\b(by\b|\bdeadline\b|\btonight\b|\bfriday\b)/i.test(text)) {
+          suggestions.push({type:'intent_unclear', title:'Intent unclear', detail:'You selected "Request Action" but the message lacks a clear ask or deadline.', severity:3});
+        }
+      }
+      // blunt or polite mismatch
+      let bluntScore = 0;
+      for(const b of bluntWords) if (lower.includes(b)) bluntScore++;
+      let softenScore = 0;
+      for(const s of softenWords) if (lower.includes(s)) softenScore++;
+      if (bluntScore > 0 && activeProfile === 'anxious') {
+        suggestions.push({type:'potentially_blunt', title:'Potentially blunt', detail:'This wording might feel abrupt to an anxious recipient.', severity:3});
+      }
+      if (softenScore > 2 && activeProfile === 'detail') {
+        suggestions.push({type:'over_soften', title:'Over-softening', detail:'Multiple softeners may make your request unclear.', severity:1});
+      }
+      // long sentences -> tighten
+      const sentences = text.split(/[.?!]\n?|\n/).map(s=>s.trim()).filter(Boolean);
+      for(const s of sentences) {
+        if (s.split(' ').length > 28) suggestions.push({type:'long_sentence', title:'Long sentence', detail:'Consider splitting this sentence for clarity.', severity:1});
+      }
+      return suggestions;
+    }
+
+    function renderFlags(suggestions) {
+      flagsContainer.innerHTML = '';
+      if (suggestions.length === 0) {
+        lensStatus.textContent = 'All good';
+        matchCount.textContent = 0;
+        return;
+      }
+      lensStatus.textContent = 'Issues found';
+      matchCount.textContent = suggestions.length;
+      suggestions.forEach(s=>{
+        const div = document.createElement('div');
+        div.className = 'flag';
+        const icon = document.createElement('div');
+        icon.className = 'icon';
+        icon.style.background = s.severity >=3 ? '#ef4444' : (s.severity===2 ? '#f59e0b' : '#10b981');
+        icon.textContent = s.severity >=3 ? '!' : (s.severity===2 ? '⚠' : '✓');
+        const body = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.textContent = s.title;
+        const desc = document.createElement('div');
+        desc.className = 'desc';
+        desc.textContent = s.detail;
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        const clarBtn = document.createElement('button');
+        clarBtn.className = 'action-btn';
+        clarBtn.textContent = 'Clarify intent?';
+        clarBtn.addEventListener('click', ()=> applySuggestion(s.type, 'clarify'));
+        const addBtn = document.createElement('button');
+        addBtn.className = 'action-btn';
+        addBtn.textContent = 'Add context?';
+        addBtn.addEventListener('click', ()=> applySuggestion(s.type, 'addcontext'));
+        const softenBtn = document.createElement('button');
+        softenBtn.className = 'action-btn';
+        softenBtn.textContent = 'Soften phrasing?';
+        softenBtn.addEventListener('click', ()=> applySuggestion(s.type, 'soften'));
+        const tightenBtn = document.createElement('button');
+        tightenBtn.className = 'action-btn';
+        tightenBtn.textContent = 'Tighten structure?';
+        tightenBtn.addEventListener('click', ()=> applySuggestion(s.type, 'tighten'));
+        const directBtn = document.createElement('button');
+        directBtn.className = 'action-btn';
+        directBtn.textContent = 'Make more direct?';
+        directBtn.addEventListener('click', ()=> applySuggestion(s.type, 'direct'));
+        actions.appendChild(clarBtn);
+        actions.appendChild(addBtn);
+        actions.appendChild(softenBtn);
+        actions.appendChild(tightenBtn);
+        actions.appendChild(directBtn);
+        body.appendChild(title);
+        body.appendChild(desc);
+        body.appendChild(actions);
+        div.appendChild(icon);
+        div.appendChild(body);
+        flagsContainer.appendChild(div);
+      });
+    }
+
+    function applySuggestion(flagType, action) {
+      let text = composer.value;
+      appendLog('Applied action "' + action + '" for ' + flagType);
+      // naive transformations depending on action
+      if (action === 'clarify') {
+        if (flagType === 'intent_unclear') {
+          text = text + "\n\nCould you confirm whether you can complete this by [DATE]?";
+        } else {
+          text = text + " (Please specify what you need.)";
+        }
+      }
+      if (action === 'addcontext') {
+        text = text.replace(/\b(the file|it|that)\b/gi, 'the Q3_metrics_v2.xlsx file');
+        if (!/Q3_metrics_v2\.xlsx/i.test(text) && flagType === 'vague_timing') {
+          text = text + " (Context: this is for the investor deck we're finalizing.)";
+        }
+      }
+      if (action === 'soften') {
+        // add a softener phrase
+        if (!/thank you|thanks|appreciate/i.test(text)) text = text + " Thanks — I appreciate it.";
+        text = "Hi — " + text;
+      }
+      if (action === 'tighten') {
+        // split long sentences: naive approach
+        text = text.replace(/,\s+/g, '. ');
+      }
+      if (action === 'direct') {
+        // add clear ask at top
+        text = "Please send the latest metrics for the deck by Friday.\n\n" + text;
+      }
+      composer.value = text;
+      analyzeAndRender();
+    }
+
+    function analyzeAndRender() {
+      const text = composer.value;
+      const suggestions = analyzeText(text);
+      renderFlags(suggestions);
+    }
+
+    function appendLog(msg) {
+      const time = new Date().toLocaleTimeString();
+      log.innerHTML = '<div>['+time+'] '+msg+'</div>' + log.innerHTML;
+    }
+
+    // wire up quick action buttons
+    document.querySelectorAll('.action-btn[data-action]').forEach(btn=>{
+      btn.addEventListener('click', ()=> {
+        const action = btn.getAttribute('data-action');
+        // for demo, apply the first flag's action
+        const suggestions = analyzeText(composer.value);
+        if(suggestions.length>0) {
+          applySuggestion(suggestions[0].type, action);
+        } else {
+          appendLog('No suggestions to apply');
+        }
+      });
+    });
+
+    document.getElementById('applyTop').addEventListener('click', ()=> {
+      const suggestions = analyzeText(composer.value);
+      if(suggestions.length>0) { applySuggestion(suggestions[0].type, 'clarify'); }
+      else appendLog('No top suggestion');
+    });
+
+    document.getElementById('viewAlternatives').addEventListener('click', ()=> {
+      const text = composer.value;
+      // produce naive alternatives
+      document.getElementById('altSoften').textContent = "Hi Alex — would you be able to send the latest metrics by Friday? No rush, thanks so much.";
+      document.getElementById('altDirect').textContent = "Please send the latest metrics for the deck by Friday.";
+      document.getElementById('altClarify').textContent = "Can you confirm whether you can share the metrics by Friday or Monday?";
+      document.getElementById('altTighten').textContent = "Send latest metrics for deck by Friday. Thanks.";
+      document.getElementById('altModal').style.display = 'block';
+    });
+    document.getElementById('closeAlt').addEventListener('click', ()=> { document.getElementById('altModal').style.display = 'none'; });
+
+    // initial analyze and on input
+    composer.addEventListener('input', ()=> { analyzeAndRender(); });
+    analyzeAndRender();
+  </script>
+</body>
+</html>
